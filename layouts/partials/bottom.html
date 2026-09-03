@@ -43,6 +43,10 @@
   <script src="{{ $script.RelPermalink }}"></script>
 {{- end }}
 
+{{ $p5 := resources.Get "js/p5.js" }}
+{{ $script := $p5 | resources.Minify }}
+<script src="{{ $script.RelPermalink }}"></script>
+
 {{ $linkColors := resources.Get "js/link-colors.js" }}
 {{ $linkColorsScript := $linkColors | resources.Minify }}
 <script src="{{ $linkColorsScript.RelPermalink }}"></script>

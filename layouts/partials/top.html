@@ -58,7 +58,9 @@
     <div class="tall-header hero">
       <div class="hero-visual" aria-hidden="true">
         <div class="collage">
-          {{ partial "collage.html" . }}
+          <div class="collage-gen">{{ partial "gen" }}</div>
+          <span class="collage-shape collage-shape--square"></span>
+          <span class="collage-shape collage-shape--circle"></span>
           <img class="collage-mark" src="{{ "img/favicon.png" | relURL }}" alt="">
         </div>
       </div>
