@@ -1,3 +1,17 @@
+{{ if .Params.link -}}
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ .Title }}</title>
+  <link rel="canonical" href="{{ .Params.link }}">
+  <meta http-equiv="refresh" content="0; url={{ .Params.link }}">
+</head>
+<body>
+  <p>Redirecting to <a href="{{ .Params.link }}">{{ .Params.link }}</a>&hellip;</p>
+</body>
+</html>
+{{- else -}}
 {{ partial "top.html" . }}
 
 
@@ -13,7 +27,7 @@
     <p class="post-excerpt">{{ .Params.excerpt }}</p>
     {{ end }}
   </header>
-  
+
   {{ if .Params.toc -}}
     {{ .TableOfContents }}
   {{- end }}
@@ -23,3 +37,4 @@
 </article>
 
 {{ partial "bottom.html" . }}
+{{- end }}

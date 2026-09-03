@@ -1,6 +1,6 @@
 (function() {
   // Theme toggle functionality
-  const STORAGE_KEY = 'davidomar-theme';
+  const STORAGE_KEY = 'km-theme';
   const THEME_DARK = 'dark';
   const THEME_LIGHT = 'light';
   

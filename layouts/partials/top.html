@@ -7,7 +7,7 @@
 
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="author" content="{{ .Site.Author.name }} {{ .Site.Author.lastname }}">
+  <meta name="author" content="{{ .Site.Params.author.name }} {{ .Site.Params.author.lastname }}">
   <meta property="og:url" content="{{ .Permalink }}">
 
   {{ if .Site.Params.gtag -}}
@@ -27,12 +27,12 @@
   <meta property="og:title" content="{{ .Site.Title }}">
   <meta property="og:type" content="website">
   <meta name="description" property="og:description" content="{{ .Site.Params.description }}">
-  <meta property ="og:image" content="https://og.davidomarf.vercel.app/{{ replace .Site.Title " " "%20" }}">
+  <meta property="og:image" content="{{ "img/favicon.png" | absURL }}">
   {{- else -}}
   <title>{{ .Title }}</title>
   <meta property="og:title" content="{{ .Title }}">
   <meta property="og:type" content="article">
-  <meta property ="og:image" content="https://og.davidomarf.vercel.app/{{ replace .Title " " "%20" }}">
+  <meta property="og:image" content="{{ "img/favicon.png" | absURL }}">
   <meta name="description" property="og:description" content="{{ or .Params.description .Params.excerpt | markdownify }}">
   {{- end }}
 
@@ -46,7 +46,8 @@
 
   
   <link href="{{ "index.xml" | relURL }}" rel="alternate" type="application/rss+xml" title="{{ .Site.Title }}">
-  <link rel="icon" href="{{ "img/favicon.ico" | relURL }}">
+  <meta name="theme-color" content="#171b1f">
+  <link rel="icon" type="image/png" href="{{ "img/favicon.png" | relURL }}">
   
 </head>
 
@@ -54,12 +55,22 @@
 
   <div class="container {{ if (eq .RelPermalink "/resume/") -}}resume{{- end }}">
     {{ if .IsHome -}}
-    <div class="tall-header">
-    <header class="site-header">
-      {{ partial "gen" }}
-      <h1>{{ .Site.Title | lower }}</h1>
-      <p>{{ .Site.Params.tagline | lower | markdownify }}</p>
-    </header>
+    <div class="tall-header hero">
+      <div class="hero-visual" aria-hidden="true">
+        <div class="collage">
+          <div class="collage-gen">{{ partial "gen" }}</div>
+          <span class="collage-shape collage-shape--square"></span>
+          <span class="collage-shape collage-shape--circle"></span>
+          <img class="collage-mark" src="{{ "img/favicon.png" | relURL }}" alt="">
+        </div>
+      </div>
+      <header class="site-header hero-copy">
+        <p class="hero-kicker">backend &amp; cloud engineer</p>
+        <h1>{{ .Site.Title | lower }}</h1>
+        <div class="hero-tagline">{{ .Site.Params.tagline | lower | markdownify }}</div>
+        <div class="hero-intro">{{ .Content }}</div>
+      </header>
+    </div>
     {{- else -}}
     <nav class="site-nav">
       <a href="{{ .Site.BaseURL }}" id="index-link">index</a>

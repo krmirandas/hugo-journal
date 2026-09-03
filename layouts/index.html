@@ -1,12 +1,9 @@
 {{ partial "top.html" . }}
 
-  {{ .Content }}
-  </div>
-  
   <article class="posts">
 
     {{ range  site.Sections -}}
-      {{ if ne .Section "resume" -}}
+      {{ if and (ne .Section "resume") (gt (len .Pages) 0) -}}
       <section>
 
         <h2 id="{{ .Section }}">{{ .Section }}</h2>
@@ -21,17 +18,17 @@
                 <div class="reading-time"> ~{{ .ReadingTime }} min</div>
               </div>
               <div class="post-entry-details">
-                <a  href="{{ .RelPermalink }}">
+                <a href="{{ with .Params.link }}{{ . }}{{ else }}{{ .RelPermalink }}{{ end }}"{{ with .Params.link }} target="_blank" rel="noreferrer noopener"{{ end }}>
                   {{ if ne .Params.image nil -}}
                   <img src ="{{ .Params.image }}"/>
                   {{- end }}
                   <div class="post-title">
-                    {{ .Title | lower }}
+                    {{ .Title | lower }}{{ with .Params.link }} <span class="post-external">&#8599;</span>{{ end }}
                   </div>
                   <div class="post-excerpt">
                     {{ cond (ne .Params.excerpt nil) .Params.excerpt .Params.description | markdownify }}
                   </div>
-                </a>                
+                </a>
               </div>
             </div>
             {{- end }}

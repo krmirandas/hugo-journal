@@ -1,11 +1,11 @@
 {{ partial "top.html" . }}
 <h1 class="name">
   <span class="first-name">
-    {{- .Site.Author.name -}}
+    {{- .Site.Params.author.name -}}
   </span>
 
   <span class="last-name">
-    {{- .Site.Author.lastname -}}
+    {{- .Site.Params.author.lastname -}}
   </span>
 </h1>
 <h2 class="position">
@@ -101,20 +101,24 @@
             </div>
             {{- end }}
           </div>
-          <div class="item-repo spaced" id="{{- $project.repo -}}">
+          {{ with $project.repo -}}
+          <div class="item-repo spaced" id="{{ . }}">
             {{ partial "repo-details.html" }}
           </div>
+          {{- end }}
         </div>
       </div>
+      {{ with $project.achievements -}}
       <div class="item-details spaced">
         <ul>
-          {{ range $project.achievements -}}
+          {{ range . -}}
           <li>
             {{ . | markdownify }}
           </li>
           {{- end }}
         </ul>
       </div>
+      {{- end }}
     </div>
     {{- end }}
   </div>
