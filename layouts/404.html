@@ -1,1 +1,11 @@
-four oh four
+{{ partial "top.html" . }}
+
+<div class="notfound">
+  <div class="notfound-mark">{{ partial "gen" 2024 }}</div>
+  <h1 class="notfound-title">404</h1>
+  <p class="notfound-text">
+    This page drifted off somewhere. <a href="{{ .Site.BaseURL }}">Back to the home page &rarr;</a>
+  </p>
+</div>
+
+{{ partial "bottom.html" . }}

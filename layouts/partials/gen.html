@@ -1,164 +1,243 @@
 <script>
-  const vw = Math.max(
-    document.documentElement.clientWidth || 0,
-    window.innerWidth || 0
-  );
-  const vh = Math.max(
-    document.documentElement.clientHeight || 0,
-    window.innerHeight || 0
-  );
+  const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+  const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
 
-  let accentProbability = 0.1;
-  let circleProbability = 0.5;
-  let skipProbability = 0.5;
-  let proximityEffect = 0.5; // New variable for proximity-based effects
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // --- palette --------------------------------------------------------
+  // Weighted HSB colors. Teal + black/white carry the composition, gold and
+  // terracotta are rare sparks (gold echoes the favicon), aqua adds air.
+  const PALETTE_LIGHT = [
+    { c: [190, 78, 52], w: 0.34 }, // teal
+    { c: "black", w: 0.24 },
+    { c: [187, 35, 92], w: 0.16 }, // ice aqua
+    { c: [42, 78, 88], w: 0.13 }, // gold (favicon echo)
+    { c: [14, 68, 78], w: 0.08 }, // terracotta
+    { c: [0, 0, 97], w: 0.05 }, // white fleck
+  ];
+  const PALETTE_DARK = [
+    { c: [190, 65, 74], w: 0.34 }, // teal
+    { c: [0, 0, 93], w: 0.22 }, // near-white
+    { c: [196, 45, 62], w: 0.16 }, // dim aqua
+    { c: [42, 75, 88], w: 0.14 }, // gold
+    { c: [14, 65, 82], w: 0.08 }, // terracotta
+    { c: [220, 30, 16], w: 0.06 }, // charcoal fleck
+  ];
+  let palette = PALETTE_LIGHT;
+
+  const SHAPE_WEIGHTS = [
+    ["quarter", 0.22],
+    ["rect", 0.18],
+    ["circle", 0.2],
+    ["triangle", 0.16],
+    ["ring", 0.14],
+    ["plus", 0.1],
+  ];
+
+  let shapes = [];
+  let prevShapes = null;
+  let transition = null; // { start: frameCount, dur }
+  let energy = 0.35; // idle pulse intensity, eased toward a target
+  let energyTarget = 0.35;
   let nextSeed = 99;
-
-  let colors = [[190, 84, 55], "black"];
-
   let canvasElement;
-  
-  // Update colors based on theme
-  function updateColors() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches && 
-                   !document.documentElement.getAttribute('data-theme'));
-    
-    colors = isDark ? [[190, 84, 65], [0, 0, 90]] : [[190, 84, 55], "black"];
+  let ready = false; // p5 hasn't attached its globals (randomSeed, etc.) until setup() has run
+
+  function pickWeighted(entries, roll) {
+    let acc = 0;
+    for (const [value, w] of entries) {
+      acc += w;
+      if (roll <= acc) return value;
+    }
+    return entries[entries.length - 1][0];
+  }
+
+  function pickColor() {
+    let acc = 0;
+    const roll = random();
+    for (const entry of palette) {
+      acc += entry.w;
+      if (roll <= acc) return entry.c;
+    }
+    return palette[0].c;
+  }
+
+  function updatePalette() {
+    const isDark =
+      document.documentElement.getAttribute("data-theme") === "dark" ||
+      (window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches &&
+        !document.documentElement.getAttribute("data-theme"));
+    palette = isDark ? PALETTE_DARK : PALETTE_LIGHT;
+  }
+
+  function buildCell(x, y, size, depth) {
+    const r = size * 1.01;
+    const rnd = [...Array(8)].map(() => random());
+
+    if (rnd[6] > 0.8 && depth > 0) return; // leave some negative space
+    if (rnd[1] > 0.5 && depth <= 2) {
+      buildCell(x, y, size / 2, depth + 1);
+      buildCell(x + size / 2, y, size / 2, depth + 1);
+      buildCell(x + size / 2, y + size / 2, size / 2, depth + 1);
+      buildCell(x, y + size / 2, size / 2, depth + 1);
+      return;
+    }
+
+    const type = pickWeighted(SHAPE_WEIGHTS, random());
+    shapes.push({
+      cx: x + r / 2,
+      cy: y + r / 2,
+      r,
+      type,
+      color: pickColor(),
+      orientation: floor(random(4)),
+      rot: type === "triangle" || type === "plus" ? random(-0.35, 0.35) : 0,
+      strokeOnly: type !== "ring" && random() < 0.16,
+      phase: random(TWO_PI),
+      pulseAmt: random(0.08, 0.22),
+    });
+  }
+
+  function generate(seed) {
+    randomSeed(seed);
+    shapes = [];
+    buildCell(0, 0, width, 0);
+  }
+
+  function regenerate(seed) {
+    if (!ready) return; // theme/system listeners can fire before p5's setup() runs
+    prevShapes = shapes;
+    generate(seed);
+    if (!reducedMotion) {
+      transition = { start: frameCount, dur: 20 };
+    }
+    if (reducedMotion) redraw();
+  }
+
+  function drawShape(s) {
+    switch (s.type) {
+      case "quarter": {
+        const a = s.orientation * HALF_PI;
+        arc(0, 0, s.r * 1.9, s.r * 1.9, a, a + HALF_PI);
+        break;
+      }
+      case "rect":
+        rect(0, 0, s.r, s.r);
+        break;
+      case "circle":
+        circle(0, 0, s.r);
+        break;
+      case "triangle":
+        triangle(0, -s.r / 2, s.r * 0.45, s.r / 4, -s.r * 0.45, s.r / 4);
+        break;
+      case "ring":
+        circle(0, 0, s.r * 0.82);
+        break;
+      case "plus":
+        rect(0, 0, s.r * 0.92, s.r * 0.24);
+        rect(0, 0, s.r * 0.24, s.r * 0.92);
+        break;
+    }
+  }
+
+  function drawSet(list, t, extraScale) {
+    for (const s of list) {
+      push();
+      translate(s.cx, s.cy);
+      const pulse = reducedMotion ? 1 : 1 + Math.sin(t + s.phase) * s.pulseAmt * energy;
+      scale(pulse * extraScale);
+      rotate(s.rot);
+      if (s.type === "ring") {
+        noFill();
+        stroke(s.color);
+        strokeWeight(2);
+      } else if (s.strokeOnly) {
+        noFill();
+        stroke(s.color);
+        strokeWeight(1.5);
+      } else {
+        noStroke();
+        fill(s.color);
+      }
+      drawShape(s);
+      pop();
+    }
   }
 
   function draw() {
     clear();
-    updateColors();
-    randomSeed(nextSeed);
-    divide(0, 0, width);
+    const t = frameCount * 0.045;
+    energy += (energyTarget - energy) * 0.06;
+
+    let mix = 1;
+    if (transition) {
+      mix = (frameCount - transition.start) / transition.dur;
+      if (mix >= 1) {
+        transition = null;
+        prevShapes = null;
+        mix = 1;
+      }
+    }
+
+    if (transition && prevShapes) {
+      drawSet(prevShapes, t, Math.max(0, 1 - mix * 1.4));
+    }
+    drawSet(shapes, t, transition ? Math.min(1, mix * 1.4) : 1);
+
+    if (reducedMotion && !transition) noLoop();
   }
 
   function setup() {
     createCanvas(190, 190).parent("p5-container");
-    canvasElement = document
-      .getElementById("p5-container")
-      .getElementsByTagName("canvas")[0];
+    canvasElement = document.getElementById("p5-container").getElementsByTagName("canvas")[0];
+    const seedAttr = canvasElement.parentElement.dataset.seed;
+    if (seedAttr) nextSeed = parseInt(seedAttr, 10);
     colorMode(HSB);
-    noStroke();
-    noLoop();
     rectMode(CENTER);
-    updateColors(); // Initial color update
-  }
-
-  function fillSquare(x, y, size, i = 0) {
-    const r = size * 1.01; // Slightly larger to prevent gaps
-    const randomNumbers = [...Array(10)].map((e) => random());
-
-    const secondRandom = random(colors);
-    const thirdRandom = random(colors);
-    const typeRandom = random([0, 1, 2, 3]);
-    let color =
-      randomNumbers[0] < accentProbability ? [20, 84, 80] : secondRandom;
-    fill(color);
-
-    // Remove the skip probability check - always draw something
-    
-    if (randomNumbers[6] > 0.8 && i > 0) {
-      return;
-    }
-    
-    // Use proximity effect to influence pattern complexity
-    if (randomNumbers[1] > 0.5 && i <= 2) {
-      divide(x, y, size, i + 1);
-    } else if (randomNumbers[2] > circleProbability) {
-      // Use proximity to affect shape rendering
-      if (randomNumbers[3] < proximityEffect) {
-        // Draw quarter circles with random orientation
-        push();
-        fill(color);
-        const orientation = floor(randomNumbers[4] * 4); // 0-3 for 4 orientations
-        
-        // Draw quarter circle based on orientation
-        switch(orientation) {
-          case 0: // Top-left
-            arc(x, y, r * 2, r * 2, 0, HALF_PI);
-            break;
-          case 1: // Top-right
-            arc(x + r, y, r * 2, r * 2, HALF_PI, PI);
-            break;
-          case 2: // Bottom-right
-            arc(x + r, y + r, r * 2, r * 2, PI, PI + HALF_PI);
-            break;
-          case 3: // Bottom-left
-            arc(x, y + r, r * 2, r * 2, PI + HALF_PI, TWO_PI);
-            break;
-        }
-        pop();
-      } else {
-        rect(x + r / 2, y + r / 2, r, r);
-      }
-    } else {
-      circle(x + r / 2, y + r / 2, r, r);
-    }
+    angleMode(RADIANS);
+    frameRate(30);
+    updatePalette();
+    generate(nextSeed);
+    ready = true;
+    if (reducedMotion) noLoop();
   }
 
   function getDistance(ax, ay, bx, by) {
     return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
   }
 
-  function divide(x, y, size, i = 0) {
-    const h = size / 2;
-
-    fillSquare(x, y, h, i);
-    fillSquare(x + h, y, h, i);
-    fillSquare(x + h, y + h, h, i);
-    fillSquare(x, y + h, h, i);
-  }
-
-  function mouseWheel() {
-    if (canvasElement.getBoundingClientRect().bottom > 0) {
-      draw();
-    }
-  }
-
   function mouseMoved({ clientX, clientY }) {
-    const px = clientX / vw;
-    const py = clientY / vh;
-    circleProbability = py;
-
-    const { left, right, bottom, top } = canvasElement.getBoundingClientRect();
-
+    if (!canvasElement) return;
+    const { left, right, top, bottom } = canvasElement.getBoundingClientRect();
     const center = { x: (left + right) / 2, y: (bottom + top) / 2 };
     const dist = getDistance(center.x, center.y, clientX, clientY);
     const maxLength = 0.8 * getDistance(center.x, center.y, vw, center.y);
-    
-    // Use proximity to control the new pattern effect (0 = far, 1 = close)
-    proximityEffect = Math.max(0, Math.min(1, 1 - (dist / maxLength)));
-    draw();
+    const proximity = Math.max(0, Math.min(1, 1 - dist / maxLength));
+    energyTarget = 0.3 + proximity * 1.1;
+    if (reducedMotion) redraw();
   }
 
   function mouseClicked() {
-    randomSeed();
     nextSeed = random(0, 1000000);
-    draw();
+    regenerate(nextSeed);
   }
-  
-  // Listen for theme changes
-  const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(mutation) {
-      if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-        draw();
+
+  const themeObserver = new MutationObserver((mutations) => {
+    mutations.forEach((m) => {
+      if (m.type === "attributes" && m.attributeName === "data-theme") {
+        updatePalette();
+        regenerate(nextSeed);
       }
     });
   });
-  
-  // Start observing the document element for attribute changes
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme']
-  });
-  
-  // Also listen for system theme changes
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
   if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      draw();
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      updatePalette();
+      regenerate(nextSeed);
     });
   }
 </script>
-<div id="p5-container"></div>
+<div id="p5-container" data-seed="{{ . | default 99 }}"></div>

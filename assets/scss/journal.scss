@@ -250,6 +250,16 @@ a,
   flex: none;
 }
 
+/* Generic sizing for the generative mark (partials/gen.html) so it can be
+   dropped into any wrapper (.collage-gen in the hero, .notfound-mark on the
+   404 page, …) and just fill it. */
+#p5-container,
+#p5-container canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+}
+
 .collage-gen {
   position: absolute;
   top: 0;
@@ -259,15 +269,38 @@ a,
   filter: saturate(1.05);
 }
 
-.collage-gen #p5-container,
-.collage-gen canvas {
-  display: block;
-  width: 100% !important;
-  height: auto !important;
-}
-
 .collage-gen canvas {
   box-shadow: 12px 12px 0 var(--shadow-color);
+}
+
+.notfound {
+  min-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 0 4rem;
+}
+
+.notfound-mark {
+  width: 190px;
+  margin-bottom: 1.5rem;
+}
+
+.notfound-mark canvas {
+  box-shadow: 10px 10px 0 var(--shadow-color);
+}
+
+.notfound-title {
+  font-size: clamp(3rem, 10vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin-bottom: 0.75rem;
+}
+
+.notfound-text {
+  color: var(--text-color-light);
 }
 
 .collage-shape {
