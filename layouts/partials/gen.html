@@ -207,14 +207,35 @@
     return Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2);
   }
 
+  let lastHoverRegenAt = -Infinity;
+  const HOVER_REGEN_COOLDOWN_MS = 700; // roughly one morph transition's length
+
   function mouseMoved({ clientX, clientY }) {
     if (!canvasElement) return;
-    const { left, right, top, bottom } = canvasElement.getBoundingClientRect();
-    const center = { x: (left + right) / 2, y: (bottom + top) / 2 };
+    const rect = canvasElement.getBoundingClientRect();
+    const center = { x: (rect.left + rect.right) / 2, y: (rect.bottom + rect.top) / 2 };
     const dist = getDistance(center.x, center.y, clientX, clientY);
     const maxLength = 0.8 * getDistance(center.x, center.y, vw, center.y);
     const proximity = Math.max(0, Math.min(1, 1 - dist / maxLength));
     energyTarget = 0.3 + proximity * 1.1;
+
+    // Hovering directly over the mark reshuffles it, instead of requiring a click.
+    const margin = Math.max(rect.width, rect.height) * 0.25;
+    const hovering =
+      clientX >= rect.left - margin &&
+      clientX <= rect.right + margin &&
+      clientY >= rect.top - margin &&
+      clientY <= rect.bottom + margin;
+
+    if (hovering && !reducedMotion) {
+      const now = performance.now();
+      if (now - lastHoverRegenAt > HOVER_REGEN_COOLDOWN_MS) {
+        lastHoverRegenAt = now;
+        nextSeed = random(0, 1000000);
+        regenerate(nextSeed);
+      }
+    }
+
     if (reducedMotion) redraw();
   }
 
